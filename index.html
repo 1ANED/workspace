@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Google Drive Workspace Hub</title>
+    <style>
+        /* Modern Clean Workspace UI */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Command Navigation Bar */
+        .command-bar {
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 999;
+        }
+
+        .branding {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .branding span {
+            color: #38bdf8; /* Sky Blue Theme Accent */
+        }
+
+        /* Control Input Layout Box */
+        .input-wrapper {
+            display: flex;
+            flex-grow: 1;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .url-field {
+            flex-grow: 1;
+            padding: 10px 16px;
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            color: #ffffff;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .url-field:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+        }
+
+        /* Action Buttons */
+        button {
+            padding: 10px 22px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+            transition: opacity 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .btn-launch {
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+            color: #0f172a;
+        }
+
+        .btn-fs {
+            background-color: #334155;
+            color: #ffffff;
+            border: 1px solid #475569;
+        }
+
+        /* Target Frame Display Viewport */
+        .viewport-space {
+            flex-grow: 1;
+            width: 100%;
+            background-color: #000000;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="command-bar">
+        <div class="branding">WORKSPACE <span>VIEWER v18</span></div>
+        
+        <div class="input-wrapper">
+            <input type="text" id="universalUrlInput" class="url-field" placeholder="Enter main homepage (e.g., poki.com)...">
+            <button class="btn-launch" onclick="launchUniversalStream()">Launch Mirror</button>
+            <button class="btn-fs" onclick="toggleFullscreen()">Fullscreen</button>
+        </div>
+    </div>
+
+    <div class="viewport-space" id="viewSpace">
+        <iframe id="displayEngineFrame" src="about:blank" allow="autoplay; fullscreen; gamepad;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    </div>
+
+    <script>
+        async function launchUniversalStream() {
+            let targetUrl = document.getElementById('universalUrlInput').value.trim();
+            if (!targetUrl) return;
+
+            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                targetUrl = 'https://' + targetUrl;
+            }
+
+            const frame = document.getElementById('displayEngineFrame');
+
+            try {
+                // 1. Fetch the raw website content through an open security pipeline
+                const proxyUrl = "https://corsproxy.io" + encodeURIComponent(targetUrl);
+                const response = await fetch(proxyUrl);
+                let html = await response.text();
+
+                // 2. Inject an absolute base domain tag so images, scripts, and CSS load from the target homepage
+                const originUrl = new URL(targetUrl).origin;
+                const baseTag = `<head><base href="${originUrl}/">`;
+                html = html.replace(/<head>/i, baseTag);
+
+                // 3. Deactivate homepage frame-busting scripts that cause blank pages
+                html = html.replace(/top\.location/g, 'self.location');
+                html = html.replace(/parent\.location/g, 'self.location');
+                html = html.replace(/window\.top/g, 'window.self');
+
+                // 4. Force-inject the processed homepage layout into the iframe locally
+                const frameDoc = frame.contentWindow.document || frame.contentDocument;
+                frameDoc.open();
+                frameDoc.write(html);
+                frameDoc.close();
+
+            } catch (err) {
+                console.error("Stream compilation failed:", err);
+                // Fallback direct load if proxy fails
+                frame.src = targetUrl;
+            }
+        }
+
+        function toggleFullscreen() {
+            let container = document.getElementById('viewSpace');
+            if (!document.fullscreenElement) {
+                if (container.requestFullscreen) container.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        document.getElementById('universalUrlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                launchUniversalStream();
+            }
+        });
+    </script>
+
+</body>
+</html>
